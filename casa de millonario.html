@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox RPG - Mansion Deluxe Update</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background: #000; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .panel { background: rgba(0,0,0,0.85); padding: 15px; border-radius: 12px; border: 2px solid #f1c40f; pointer-events: auto; }
+        #stats { position: absolute; top: 20px; left: 20px; }
+        #quests { position: absolute; top: 20px; right: 20px; width: 250px; }
+        #dialog { 
+            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); 
+            width: 85%; max-width: 650px; background: #fff; color: #333; 
+            padding: 25px; border-radius: 20px; border: 6px solid #f1c40f;
+            display: none; font-size: 1.2em; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        #inventory-ui { position: absolute; bottom: 20px; left: 20px; }
+        #btn-e { 
+            position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
+            background: #f1c40f; color: black; padding: 10px 30px; border-radius: 50px;
+            font-weight: bold; font-size: 1.5em; display: none; border: 4px solid white;
+        }
+        .controls-hint { position: absolute; bottom: 20px; right: 20px; font-size: 0.8em; opacity: 0.7; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div id="stats" class="panel">
+        <div>👤 <span id="player-name">Jugador</span></div>
+        <div style="color: #2ecc71;">💪 Fuerza: <span id="stat-str">0</span></div>
+        <div style="color: #f1c40f;">💰 Monedas: <span id="stat-coins">0</span></div>
+    </div>
+
+    <div id="quests" class="panel">
+        <strong style="color: #f1c40f;">Misión Actual:</strong>
+        <p id="quest-list">Explora tu mansión de lujo.</p>
+    </div>
+
+    <div id="inventory-ui" class="panel">
+        🎒 Mochila: <span id="inventory">Vacía</span>
+    </div>
+
+    <div id="btn-e">INTERACTUAR [E]</div>
+
+    <div id="dialog" class="panel">
+        <strong id="dialog-name" style="color: #e67e22;">Nombre</strong>
+        <p id="dialog-text">Texto del diálogo...</p>
+        <div style="font-size: 0.7em; text-align: right; color: #777;">Presiona [E] para continuar</div>
+    </div>
+
+    <div class="controls-hint panel">
+        WASD: Mover | SHIFT: Correr | E: Interactuar
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/** * CONFIGURACIÓN Y ESTADO 
+ */
+let stats = { coins: 0, trainLevel: 0, trained: false, name: "Millonario" };
+let inv = { key: false, skins: 0, rug: true }; // Acceso concedido
+let isInside = true; // Empezamos dentro
+let currentDialog = null;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000); // Fondo oscuro para el interior
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+/**
+ * GENERADOR DE TEXTURAS PROCEDURALES
+ */
+function createTexture(color1, color2, type = 'grid') {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = color1;
+    ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = color2;
+    ctx.lineWidth = 4;
+    
+    if(type === 'grid') {
+        for(let i=0; i<256; i+=64) {
+            ctx.strokeRect(i, 0, 64, 256);
+            ctx.strokeRect(0, i, 256, 64);
+        }
+    } else if (type === 'wood') {
+        ctx.fillStyle = color2;
+        for(let i=0; i<20; i++) {
+            ctx.fillRect(Math.random()*256, 0, 2, 256);
+        }
+    } else if (type === 'marble') {
+        ctx.lineWidth = 1;
+        for(let i=0; i<30; i++) {
+            ctx.beginPath();
+            ctx.moveTo(Math.random()*256, 0);
+            ctx.lineTo(Math.random()*256, 256);
+            ctx.stroke();
+        }
+    }
+    
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+}
+
+const woodTex = createTexture('#5d4037', '#3e2723', 'wood');
+const marbleTex = createTexture('#ffffff', '#e0e0e0', 'marble');
+const rugTex = createTexture('#c62828', '#b71c1c', 'grid');
+
+/** * ELEMENTOS DEL MUNDO (EXTERIOR DE FONDO) 
+ */
+const groundGeo = new THREE.PlaneGeometry(2000, 2000);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x27ae60 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+/** * PERSONAJE 
+ */
+const playerGroup = new THREE.Group();
+const body = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 2), new THREE.MeshStandardMaterial({ color: 0x3498db }));
+body.position.y = 3;
+playerGroup.add(body);
+
+const head = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), new THREE.MeshStandardMaterial({ color: 0xffdbac }));
+head.position.y = 7.5;
+playerGroup.add(head);
+
+const leftArm = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 1.2), new THREE.MeshStandardMaterial({ color: 0x3498db }));
+leftArm.position.set(-2.8, 4, 0);
+playerGroup.add(leftArm);
+
+const rightArm = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4, 1.2), new THREE.MeshStandardMaterial({ color: 0x3498db }));
+rightArm.position.set(2.8, 4, 0);
+playerGroup.add(rightArm);
+
+// Empezar directamente en las coordenadas de la mansión
+const mansionOrigin = new THREE.Vector3(2500, 0, 2500);
+playerGroup.position.set(mansionOrigin.x, 5, mansionOrigin.z + 80);
+scene.add(playerGroup);
+
+/** * INTERIOR DE LA MANSIÓN 
+ */
+function buildMansionInterior() {
+    const intGroup = new THREE.Group();
+    intGroup.position.copy(mansionOrigin);
+
+    // Suelo de mármol
+    const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(150, 200),
+        new THREE.MeshStandardMaterial({ map: marbleTex })
+    );
+    floor.rotation.x = -Math.PI/2;
+    intGroup.add(floor);
+
+    // Paredes Lujosas
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
+    const wallBack = new THREE.Mesh(new THREE.BoxGeometry(150, 50, 2), wallMat);
+    wallBack.position.set(0, 25, -100);
+    intGroup.add(wallBack);
+
+    const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(2, 50, 200), wallMat);
+    wallLeft.position.set(-75, 25, 0);
+    intGroup.add(wallLeft);
+
+    const wallRight = new THREE.Mesh(new THREE.BoxGeometry(2, 50, 200), wallMat);
+    wallRight.position.set(75, 25, 0);
+    intGroup.add(wallRight);
+
+    // --- MUEBLES ---
+    
+    // Mesa de Comedor Grande
+    const tableGroup = new THREE.Group();
+    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(25, 1, 50), new THREE.MeshStandardMaterial({ map: woodTex }));
+    tableTop.position.y = 5;
+    tableGroup.add(tableTop);
+    
+    for(let x of [-10, 10]) {
+        for(let z of [-20, 20]) {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(1.5, 5, 1.5), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+            leg.position.set(x, 2.5, z);
+            tableGroup.add(leg);
+        }
+    }
+    tableGroup.position.set(0, 0, -30);
+    intGroup.add(tableGroup);
+
+    // Sillas
+    const createChair = (x, z, rot) => {
+        const chair = new THREE.Group();
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 6), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+        seat.position.y = 3;
+        const back = new THREE.Mesh(new THREE.BoxGeometry(6, 8, 0.5), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+        back.position.set(0, 7, -2.75);
+        chair.add(seat, back);
+        chair.position.set(x, 0, z);
+        chair.rotation.y = rot;
+        intGroup.add(chair);
+    }
+    
+    for(let i=0; i<5; i++) {
+        createChair(-18, -50 + (i*10), Math.PI/2);
+        createChair(18, -50 + (i*10), -Math.PI/2);
+    }
+
+    // Sofá Lujoso
+    const sofa = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(35, 5, 12), new THREE.MeshStandardMaterial({ color: 0x34495e }));
+    base.position.y = 2.5;
+    const sBack = new THREE.Mesh(new THREE.BoxGeometry(35, 10, 3), new THREE.MeshStandardMaterial({ color: 0x34495e }));
+    sBack.position.set(0, 5, -4.5);
+    sofa.add(base, sBack);
+    sofa.position.set(-45, 0, 40);
+    intGroup.add(sofa);
+
+    // Alfombra debajo del sofá
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(50, 30), new THREE.MeshStandardMaterial({ map: rugTex }));
+    rug.rotation.x = -Math.PI/2;
+    rug.position.set(-45, 0.1, 40);
+    intGroup.add(rug);
+
+    // Cocina (Encimera)
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(40, 7, 15), new THREE.MeshStandardMaterial({ color: 0xfdfdfd }));
+    counter.position.set(50, 3.5, 80);
+    intGroup.add(counter);
+
+    // Luces de Interior Brillantes
+    const pLight = new THREE.PointLight(0xffeaa7, 1.5, 300);
+    pLight.position.set(0, 45, 0);
+    intGroup.add(pLight);
+    
+    const kitchenLight = new THREE.PointLight(0xffffff, 1, 100);
+    kitchenLight.position.set(50, 30, 80);
+    intGroup.add(kitchenLight);
+
+    scene.add(intGroup);
+}
+
+buildMansionInterior();
+
+/** * NPCs 
+ */
+const npcs = [];
+function createNPC(name, color, pos, dialogs) {
+    const g = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.BoxGeometry(4, 6, 2), new THREE.MeshStandardMaterial({ color }));
+    b.position.y = 3;
+    const h = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), new THREE.MeshStandardMaterial({ color: 0xffdbac }));
+    h.position.y = 7.5;
+    g.add(b, h);
+    g.position.copy(pos);
+    scene.add(g);
+    
+    const npc = { name, group: g, dialogs, position: g.position, currentStep: 0 };
+    npcs.push(npc);
+    return npc;
+}
+
+const chef = createNPC("Chef Gustavo", 0xffffff, mansionOrigin.clone().add(new THREE.Vector3(50, 0, 70)), [
+    "¡Ah, el dueño de casa! El banquete de caviar está casi listo.",
+    "No toques la encimera, el mármol es importado de Italia.",
+    "¿Desea algo especial para cenar hoy?"
+]);
+
+chef.animate = (t) => {
+    chef.group.rotation.y = Math.sin(t * 2) * 0.3;
+    chef.group.position.y = Math.abs(Math.sin(t * 4)) * 0.4; // Movimiento de cocinado
+};
+
+/** * LÓGICA DE JUEGO 
+ */
+const keys = {};
+window.addEventListener('keydown', e => { 
+    keys[e.key.toLowerCase()] = true; 
+    if(e.key.toLowerCase() === 'e') interact();
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function interact() {
+    if(currentDialog) {
+        closeDialog();
+        return;
+    }
+    npcs.forEach(n => {
+        if(playerGroup.position.distanceTo(n.position) < 15) {
+            showDialog(n.name, n.dialogs[n.currentStep]);
+            n.currentStep = (n.currentStep + 1) % n.dialogs.length;
+        }
+    });
+}
+
+function showDialog(name, text) {
+    currentDialog = { name, text };
+    document.getElementById('dialog-name').innerText = name;
+    document.getElementById('dialog-text').innerText = text;
+    document.getElementById('dialog').style.display = 'block';
+}
+
+function closeDialog() {
+    currentDialog = null;
+    document.getElementById('dialog').style.display = 'none';
+}
+
+/** * BUCLE DE ANIMACIÓN 
+ */
+let clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    let delta = clock.getDelta();
+    let time = clock.getElapsedTime();
+
+    let speed = keys['shift'] ? 1.2 : 0.6;
+    if(!currentDialog) {
+        if(keys['w']) playerGroup.translateZ(-speed);
+        if(keys['s']) playerGroup.translateZ(speed);
+        if(keys['a']) playerGroup.rotation.y += 0.05;
+        if(keys['d']) playerGroup.rotation.y -= 0.05;
+    }
+
+    if(keys['w'] || keys['s']) {
+        leftArm.rotation.x = Math.sin(time * 10) * 0.5;
+        rightArm.rotation.x = -Math.sin(time * 10) * 0.5;
+    }
+
+    chef.animate(time);
+
+    const relativeCameraOffset = new THREE.Vector3(0, 20, 45);
+    const cameraOffset = relativeCameraOffset.applyMatrix4(playerGroup.matrixWorld);
+    camera.position.lerp(cameraOffset, 0.1);
+    camera.lookAt(playerGroup.position.x, playerGroup.position.y + 5, playerGroup.position.z);
+
+    let nearSomething = false;
+    npcs.forEach(n => { if(playerGroup.position.distanceTo(n.position) < 15) nearSomething = true; });
+    document.getElementById('btn-e').style.display = nearSomething ? 'block' : 'none';
+
+    renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+</script>
+</body>
+</html>

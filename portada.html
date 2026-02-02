@@ -1,0 +1,432 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox RPG - Variedad de Cabello</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87ceeb; font-family: 'Segoe UI', sans-serif; }
+        #ui { position: absolute; top: 20px; left: 20px; color: white; pointer-events: none; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .controls-hint { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.6); color: white; padding: 15px; border-radius: 10px; font-size: 14px; pointer-events: none; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1 style="margin:0">Roblox World: Oficios</h1>
+        <p>Estilos de cabello naturales y variados.</p>
+    </div>
+    <div class="controls-hint">
+        <b>WASD / Flechas:</b> Moverse<br>
+        <b>Espacio:</b> Saltar | <b>Clic / F:</b> Atacar<br>
+        <b>Ratón:</b> Girar Cámara (Click para activar)<br>
+        <b>Esc:</b> Liberar Ratón
+    </div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+
+<script>
+/* ================= CONFIGURACIÓN ESCENA ================= */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+/* ================= ILUMINACIÓN ================= */
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+sun.position.set(50, 100, 50);
+sun.castShadow = true;
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+scene.add(sun);
+
+/* ================= SUELO ================= */
+const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(1000, 1000),
+    new THREE.MeshStandardMaterial({ color: 0x55aa55 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+/* ================= FÁBRICA DE PERSONAJES ================= */
+const skinMat = new THREE.MeshStandardMaterial({ color: 0xf2d2b6 });
+const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+function applyHairStyle(group, role, color) {
+    const hairMat = new THREE.MeshStandardMaterial({ color: color });
+    let config = [];
+
+    switch(role) {
+        case "player":
+            config = [
+                { s: [1.5, 0.3, 1.5], p: [0, 0.75, 0] },
+                { s: [1.5, 1.0, 0.3], p: [0, 0.2, -0.65] },
+                { s: [0.3, 0.8, 1.3], p: [0.75, 0.2, 0] },
+                { s: [0.3, 0.8, 1.3], p: [-0.75, 0.2, 0] },
+                { s: [1.3, 0.4, 0.4], p: [0, 0.6, 0.65] }
+            ];
+            break;
+        case "granjera":
+            // Estilo recogido bajo el sombrero
+            config = [
+                { s: [1.4, 0.5, 1.4], p: [0, 0.4, 0] },
+                { s: [0.6, 0.6, 0.6], p: [0, 0, -0.8] } // Un moño pequeño
+            ];
+            break;
+        case "sastre":
+            // El sastre será calvo para dar variedad
+            config = [];
+            break;
+        case "guia":
+            // Cabello corto con patillas
+            config = [
+                { s: [1.5, 0.2, 1.5], p: [0, 0.7, 0] },
+                { s: [0.2, 0.7, 1.0], p: [0.75, 0.1, 0] },
+                { s: [0.2, 0.7, 1.0], p: [-0.75, 0.1, 0] }
+            ];
+            break;
+        case "cazador":
+            // Cabello largo "Salvaje"
+            config = [
+                { s: [1.5, 0.3, 1.5], p: [0, 0.75, 0] },
+                { s: [1.6, 2.2, 0.4], p: [0, -0.4, -0.7] }, // Largo por la espalda
+                { s: [0.4, 1.8, 1.2], p: [0.75, -0.2, 0] }, // Lateral largo
+                { s: [0.4, 1.8, 1.2], p: [-0.75, -0.2, 0] } // Lateral largo
+            ];
+            break;
+    }
+
+    config.forEach(c => {
+        const h = new THREE.Mesh(new THREE.BoxGeometry(...c.s), hairMat);
+        h.position.set(...c.p);
+        group.add(h);
+    });
+}
+
+function createCharacter(shirtColor, pantsColor, role = "player") {
+    const charGroup = new THREE.Group();
+    const shirt = new THREE.MeshStandardMaterial({ color: shirtColor });
+    const pants = new THREE.MeshStandardMaterial({ color: pantsColor });
+
+    const upperBody = new THREE.Group();
+    upperBody.position.y = 3;
+    charGroup.add(upperBody);
+
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(2, 2.5, 1), shirt);
+    torso.castShadow = true;
+    upperBody.add(torso);
+
+    const head = new THREE.Group();
+    head.position.y = 2;
+    upperBody.add(head);
+
+    const headCube = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), skinMat);
+    headCube.castShadow = true;
+    head.add(headCube);
+
+    // Aplicar estilo de cabello según rol
+    const hairColor = role === "cazador" ? 0x1a1a1a : (role === "player" ? 0x4b3621 : 0x2d1b00);
+    applyHairStyle(head, role, hairColor);
+
+    if (role === "granjera") {
+        const hat = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.1, 2.6), new THREE.MeshStandardMaterial({color: 0xe3c16f}));
+        hat.position.y = 0.8;
+        head.add(hat);
+        const hatTop = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 1.5), new THREE.MeshStandardMaterial({color: 0xe3c16f}));
+        hatTop.position.y = 1.0;
+        head.add(hatTop);
+    } else if (role === "sastre") {
+        const scarf = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.4, 1.1), new THREE.MeshStandardMaterial({color: 0xeeeeee}));
+        scarf.position.y = -0.9;
+        upperBody.add(scarf);
+    } else if (role === "guia") {
+        const backpack = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 0.6), new THREE.MeshStandardMaterial({color: 0x5d4037}));
+        backpack.position.set(0, 0, -0.8);
+        upperBody.add(backpack);
+    } else if (role === "cazador") {
+        const cloak = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.4, 0.1), new THREE.MeshStandardMaterial({color: 0x222222}));
+        cloak.position.set(0, -0.8, -0.75); // Un poco separado para no solapar con el pelo largo
+        upperBody.add(cloak);
+    }
+
+    const e1 = new THREE.Mesh(new THREE.CircleGeometry(0.1, 8), eyeMat);
+    e1.position.set(0.3, 0.1, 0.71); head.add(e1);
+    const e2 = e1.clone(); e2.position.set(-0.3, 0.1, 0.71); head.add(e2);
+    const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 10, Math.PI), eyeMat);
+    mouth.rotation.x = Math.PI;
+    mouth.position.set(0, -0.3, 0.7);
+    head.add(mouth);
+
+    const createArm = (x) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(x, 1, 0);
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2.2, 0.75), skinMat);
+        mesh.position.y = -0.9;
+        mesh.castShadow = true;
+        pivot.add(mesh);
+        return pivot;
+    };
+    const armL = createArm(-1.4);
+    const armR = createArm(1.4);
+    upperBody.add(armL, armR);
+
+    const createLeg = (x) => {
+        const pivot = new THREE.Group();
+        pivot.position.set(x, 1.8, 0);
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.2, 0.9), pants);
+        mesh.position.y = -1;
+        mesh.castShadow = true;
+        pivot.add(mesh);
+        return pivot;
+    };
+    const legL = createLeg(-0.55);
+    const legR = createLeg(0.55);
+    charGroup.add(legL, legR);
+
+    charGroup.userData = { 
+        upperBody, head, armL, armR, legL, legR, 
+        walkTime: 0, 
+        idleOffset: Math.random() * 10,
+        targetHeadRotation: new THREE.Euler(),
+        isAttacking: false,
+        attackTime: 0,
+        verticalVelocity: 0,
+        isGrounded: true
+    };
+    return charGroup;
+}
+
+const player = createCharacter(0x3498db, 0x222222, "player");
+scene.add(player);
+
+const npcs = [];
+const npcList = [
+    { role: "granjera", col: 0x2ecc71, p: [-12, 0, -10] },
+    { role: "sastre", col: 0x9b59b6, p: [12, 0, -5] },
+    { role: "guia", col: 0xf1c40f, p: [0, 0, -20] },
+    { role: "cazador", col: 0x444444, p: [-18, 0, 8] }
+];
+
+npcList.forEach(data => {
+    const npc = createCharacter(data.col, 0x333333, data.role);
+    npc.position.set(...data.p);
+    npc.rotation.y = Math.random() * Math.PI;
+    scene.add(npc);
+    npcs.push(npc);
+});
+
+/* ================= LÓGICA DE ANIMACIÓN ================= */
+function animateChar(char, time, isMoving, speed, deltaTime) {
+    const d = char.userData;
+    const t = (time * 0.001) + d.idleOffset;
+
+    if (d.isAttacking) {
+        d.attackTime += deltaTime * 12;
+        const attackSwing = Math.sin(d.attackTime) * 1.8;
+        d.armR.rotation.x = -Math.PI/2 - attackSwing;
+        if (d.attackTime > Math.PI) {
+            d.isAttacking = false;
+            d.attackTime = 0;
+        }
+    }
+
+    if (!d.isGrounded) {
+        d.legL.rotation.x = THREE.MathUtils.lerp(d.legL.rotation.x, -0.2, 0.2);
+        d.legR.rotation.x = THREE.MathUtils.lerp(d.legR.rotation.x, 0.2, 0.2);
+        d.armL.rotation.x = THREE.MathUtils.lerp(d.armL.rotation.x, 0.3, 0.2);
+        if(!d.isAttacking) d.armR.rotation.x = THREE.MathUtils.lerp(d.armR.rotation.x, 0.3, 0.2);
+        d.upperBody.position.y = THREE.MathUtils.lerp(d.upperBody.position.y, 3.2, 0.1);
+    } else if (!isMoving) {
+        d.upperBody.position.y = 3 + Math.sin(t * 1.5) * 0.04;
+        
+        if (char !== player) {
+            d.head.rotation.y = THREE.MathUtils.lerp(d.head.rotation.y, d.targetHeadRotation.y, 0.1);
+            d.head.rotation.x = THREE.MathUtils.lerp(d.head.rotation.x, d.targetHeadRotation.x, 0.1);
+        } else {
+             d.head.rotation.y = Math.sin(t * 0.5) * 0.1;
+             d.head.rotation.x = Math.cos(t * 0.8) * 0.05;
+        }
+        
+        d.armL.rotation.z = -0.15 - Math.sin(t * 1.5) * 0.05;
+        d.armR.rotation.z = d.isAttacking ? d.armR.rotation.z : 0.15 + Math.sin(t * 1.5) * 0.05;
+        
+        d.legL.rotation.x = THREE.MathUtils.lerp(d.legL.rotation.x, 0, 0.1);
+        d.legR.rotation.x = THREE.MathUtils.lerp(d.legR.rotation.x, 0, 0.1);
+        d.armL.rotation.x = THREE.MathUtils.lerp(d.armL.rotation.x, 0, 0.1);
+        if(!d.isAttacking) d.armR.rotation.x = THREE.MathUtils.lerp(d.armR.rotation.x, 0, 0.1);
+        d.upperBody.rotation.x = THREE.MathUtils.lerp(d.upperBody.rotation.x, 0, 0.1);
+    } else {
+        const runCycle = speed * 4.2; 
+        d.walkTime += runCycle;
+        const swing = Math.sin(d.walkTime * 8) * 0.8;
+        const lift = Math.abs(Math.cos(d.walkTime * 8)) * 0.15;
+        
+        d.legL.rotation.x = swing;
+        d.legR.rotation.x = -swing;
+        d.armL.rotation.x = -swing * 1.0;
+        if(!d.isAttacking) d.armR.rotation.x = swing * 1.0;
+        
+        d.upperBody.position.y = 3 + lift;
+        d.upperBody.rotation.x = 0.15;
+        d.upperBody.rotation.z = swing * 0.03;
+        d.head.rotation.x = -lift * 0.4;
+    }
+}
+
+/* ================= CÁMARA Y CONTROLES ================= */
+let camYaw = 0, camPitch = 0.5, camDist = 18;
+const keys = {};
+window.addEventListener("keydown", e => {
+    keys[e.code] = true;
+    if (e.code === "Space" && player.userData.isGrounded) {
+        player.userData.verticalVelocity = 0.28;
+        player.userData.isGrounded = false;
+    }
+    if (e.code === "KeyF") player.userData.isAttacking = true;
+});
+window.addEventListener("keyup", e => keys[e.code] = false);
+window.addEventListener("mousedown", () => {
+    if (document.pointerLockElement) player.userData.isAttacking = true;
+    else renderer.domElement.requestPointerLock();
+});
+
+window.addEventListener("mousemove", e => {
+    if (document.pointerLockElement) {
+        camYaw -= e.movementX * 0.005;
+        camPitch = Math.max(0.1, Math.min(1.3, camPitch + e.movementY * 0.005));
+    }
+});
+
+let velocity = new THREE.Vector3();
+let lastTime = 0;
+
+function update(time) {
+    const deltaTime = (time - lastTime) / 1000;
+    lastTime = time;
+
+    let inputDir = new THREE.Vector3();
+    if (keys["KeyW"] || keys["ArrowUp"]) inputDir.z -= 1;
+    if (keys["KeyS"] || keys["ArrowDown"]) inputDir.z += 1;
+    if (keys["KeyA"] || keys["ArrowLeft"]) inputDir.x -= 1;
+    if (keys["KeyD"] || keys["ArrowRight"]) inputDir.x += 1;
+
+    let isMoving = inputDir.length() > 0;
+    if (isMoving) {
+        inputDir.normalize();
+        const moveVector = new THREE.Vector3(
+            inputDir.x * Math.cos(camYaw) + inputDir.z * Math.sin(camYaw),
+            0,
+            inputDir.z * Math.cos(camYaw) - inputDir.x * Math.sin(camYaw)
+        );
+        velocity.lerp(moveVector.multiplyScalar(0.24), 0.15);
+        player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, Math.atan2(velocity.x, velocity.z), 0.2);
+    } else {
+        velocity.multiplyScalar(0.85);
+    }
+
+    if (!player.userData.isGrounded) {
+        player.userData.verticalVelocity -= 0.015;
+        player.position.y += player.userData.verticalVelocity;
+        if (player.position.y <= 0) {
+            player.position.y = 0;
+            player.userData.isGrounded = true;
+            player.userData.verticalVelocity = 0;
+        }
+    }
+
+    player.position.x += velocity.x;
+    player.position.z += velocity.z;
+    
+    animateChar(player, time, isMoving, velocity.length(), deltaTime);
+
+    npcs.forEach(npc => {
+        animateChar(npc, time, false, 0, deltaTime);
+        const dist = npc.position.distanceTo(player.position);
+        if (dist < 15) {
+            const lookVector = player.position.clone().sub(npc.position).normalize();
+            const angleToPlayer = Math.atan2(lookVector.x, lookVector.z) - npc.rotation.y;
+            let normalizedAngle = ((angleToPlayer + Math.PI) % (Math.PI * 2)) - Math.PI;
+            const limit = 1.05;
+            if (Math.abs(normalizedAngle) < limit) {
+                npc.userData.targetHeadRotation.y = normalizedAngle;
+                const verticalDist = (player.position.y + 3) - (npc.position.y + 5);
+                npc.userData.targetHeadRotation.x = Math.max(-0.4, Math.min(0.4, Math.atan2(verticalDist, dist)));
+            } else {
+                npc.userData.targetHeadRotation.y = 0;
+                npc.userData.targetHeadRotation.x = 0;
+            }
+        } else {
+            npc.userData.targetHeadRotation.y = 0;
+            npc.userData.targetHeadRotation.x = 0;
+        }
+    });
+
+    const goalPos = new THREE.Vector3(
+        player.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist,
+        player.position.y + Math.sin(camPitch) * camDist + 4,
+        player.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist
+    );
+    camera.position.lerp(goalPos, 0.1);
+    camera.lookAt(player.position.x, player.position.y + 3.5, player.position.z);
+}
+
+function loop(time) {
+    requestAnimationFrame(loop);
+    update(time);
+    renderer.render(scene, camera);
+}
+loop(0);
+
+window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+</html>

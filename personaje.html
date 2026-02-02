@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox RPG - Personalización de Personaje</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --accent: #2ecc71;
+            --bg-dark: #121212;
+            --panel-bg: rgba(20, 20, 20, 0.9);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+        }
+
+        /* PANTALLA DE PERSONALIZACIÓN */
+        #character-creator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            z-index: 1000;
+            background: radial-gradient(circle at 25% 50%, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .creator-left {
+            width: 380px;
+            background: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            color: white;
+            box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .creator-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .creator-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .creator-title h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .creator-title p {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        /* PANELES DE PERSONALIZACIÓN */
+        .creator-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 5px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 5px;
+            border: none;
+            background: transparent;
+            color: #888;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 12px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tab-btn.active {
+            color: white;
+            background: rgba(52, 152, 219, 0.3);
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* CONTROLES DE PERSONALIZACIÓN */
+        .control-group {
+            margin-bottom: 25px;
+            background: rgba(30, 35, 50, 0.6);
+            padding: 18px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 12px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+
+        select, input[type="range"], input[type="color"] {
+            width: 100%;
+            background: #2a2a3a;
+            border: 1px solid #444;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        select:hover, input[type="color"]:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+        }
+
+        /* BOTONES DE ACCIÓN */
+        .creator-actions {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #btn-start {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+            box-shadow: 0 5px 20px rgba(46, 204, 113, 0.4);
+        }
+
+        #btn-start:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(46, 204, 113, 0.6);
+        }
+
+        #btn-random {
+            background: rgba(52, 152, 219, 0.2);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        #btn-random:hover {
+            background: rgba(52, 152, 219, 0.3);
+        }
+
+        /* VISTA PREVIA 3D */
+        #preview-container {
+            width: 500px;
+            height: 500px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        #preview-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .preview-controls {
+            margin-top: 30px;
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        /* ESTADO DEL JUEGO */
+        #game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: none;
+            z-index: 500;
+        }
+
+        .game-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            #character-creator {
+                flex-direction: column;
+            }
+            
+            .creator-left {
+                width: 100%;
+                height: 50%;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            #preview-container {
+                width: 90vw;
+                height: 90vw;
+                max-width: 400px;
+                max-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- PANTALLA DE PERSONALIZACIÓN -->
+    <div id="character-creator">
+        <div class="creator-left">
+            <div class="creator-title">
+                <h1>PERSONALIZAR AVATAR</h1>
+                <p>Crea tu personaje único para la aventura</p>
+            </div>
+            
+            <div class="creator-tabs">
+                <button class="tab-btn active" onclick="switchTab('gender')">Género</button>
+                <button class="tab-btn" onclick="switchTab('appearance')">Apariencia</button>
+                <button class="tab-btn" onclick="switchTab('clothing')">Ropa</button>
+            </div>
+            
+            <!-- PESTAÑA GÉNERO -->
+            <div id="tab-gender" class="tab-content active">
+                <div class="control-group">
+                    <label>Selecciona tu género</label>
+                    <select id="gender-select">
+                        <option value="male">Masculino</option>
+                        <option value="female">Femenino</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Tipo de cuerpo</label>
+                    <select id="body-type">
+                        <option value="athletic">Atlético</option>
+                        <option value="average">Normal</option>
+                        <option value="heavy">Robusto</option>
+                        <option value="slim">Delgado</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- PESTAÑA APARIENCIA -->
+            <div id="tab-appearance" class="tab-content">
+                <div class="control-group">
+                    <label>Color de piel</label>
+                    <input type="color" id="skin-color" value="#f2d2b6">
+                </div>
+                
+                <div class="control-group">
+                    <label>Estilo de cabello</label>
+                    <select id="hair-style">
+                        <option value="short">Corto</option>
+                        <option value="medium">Mediano</option>
+                        <option value="long">Largo</option>
+                        <option value="anime">Anime Largo</option>
+                        <option value="spiky">Puntiagudo</option>
+                        <option value="curly">Rizado</option>
+                        <option value="bald">Calvo</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Color de cabello</label>
+                    <input type="color" id="hair-color" value="#4b3621">
+                </div>
+                
+                <div class="control-group" id="beard-control">
+                    <label>Barba (solo hombres)</label>
+                    <select id="beard-style">
+                        <option value="none">Sin barba</option>
+                        <option value="short">Corta</option>
+                        <option value="medium">Media</option>
+                        <option value="long">Larga</option>
+                        <option value="goatee">Perilla</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- PESTAÑA ROPA -->
+            <div id="tab-clothing" class="tab-content">
+                <div class="control-group">
+                    <label>Color de camiseta</label>
+                    <input type="color" id="shirt-color" value="#3498db">
+                </div>
+                
+                <div class="control-group">
+                    <label>Tipo de pantalón</label>
+                    <select id="pants-type">
+                        <option value="pants">Pantalones</option>
+                        <option value="shorts">Shorts</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Color de pantalón</label>
+                    <input type="color" id="pants-color" value="#2c3e50">
+                </div>
+                
+                <div class="control-group">
+                    <label>Tipo de calzado</label>
+                    <select id="shoes-type">
+                        <option value="boots">Botas</option>
+                        <option value="sneakers">Zapatillas</option>
+                        <option value="sandals">Sandalias</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Color de calzado</label>
+                    <input type="color" id="shoes-color" value="#1a1a1a">
+                </div>
+            </div>
+            
+            <div class="creator-actions">
+                <button id="btn-random" class="action-btn">
+                    <span>🎲</span> PERSONAJE ALEATORIO
+                </button>
+                <button id="btn-start" class="action-btn">
+                    <span>🚀</span> COMENZAR AVENTURA
+                </button>
+            </div>
+        </div>
+        
+        <div class="creator-right">
+            <div id="preview-container">
+                <canvas id="preview-canvas"></canvas>
+            </div>
+            <div class="preview-controls">
+                <p>🔍 Arrastra para rotar | 🖱️ Rueda para acercar/alejar</p>
+                <p>Tu personaje personalizado aparecerá así en el juego</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INTERFAZ DEL JUEGO (se mostrará después) -->
+    <div id="game-ui">
+        <div class="game-info">
+            Personaje: <span id="player-gender-name">Explorador</span> | 
+            <button id="btn-back-to-creator" style="
+                background: rgba(52, 152, 219, 0.2);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                padding: 5px 15px;
+                border-radius: 20px;
+                cursor: pointer;
+                margin-left: 10px;
+                pointer-events: auto;
+            ">Volver al editor</button>
+        </div>
+    </div>
+
+    <!-- THREE.JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        // CONFIGURACIÓN DEL PERSONAJE
+        const characterConfig = {
+            gender: 'male',
+            bodyType: 'athletic',
+            skinColor: '#f2d2b6',
+            hairStyle: 'short',
+            hairColor: '#4b3621',
+            beardStyle: 'none',
+            shirtColor: '#3498db',
+            pantsType: 'pants',
+            pantsColor: '#2c3e50',
+            shoesType: 'boots',
+            shoesColor: '#1a1a1a'
+        };
+
+        // VARIABLES THREE.JS
+        let scene, camera, renderer, character;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationSpeed = 0.01;
+        let zoomLevel = 8;
+        let isInGame = false;
+
+        // INICIALIZAR VISTA PREVIA
+        function initPreview() {
+            const canvas = document.getElementById('preview-canvas');
+            
+            scene = new THREE.Scene();
+            scene.background = null;
+            
+            camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            camera.position.set(0, 3, zoomLevel);
+            
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.shadowMap.enabled = true;
+            
+            // ILUMINACIÓN
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const backLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            backLight.position.set(-5, 5, -5);
+            scene.add(backLight);
+            
+            // SUELO PARA SOMBRAS
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222233, 
+                metalness: 0.1, 
+                roughness: 0.8 
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -2.5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // CREAR PERSONAJE INICIAL
+            updateCharacter();
+            
+            // CONTROLES DEL RATÓN
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('wheel', onMouseWheel);
+            
+            // ANIMACIÓN
+            animate();
+        }
+
+        // CONSTRUIR PERSONAJE 3D
+        function buildCharacter(config) {
+            const group = new THREE.Group();
+            const isFemale = config.gender === 'female';
+            
+            // MATERIALES
+            const skinMat = new THREE.MeshStandardMaterial({ 
+                color: config.skinColor,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            
+            const hairMat = new THREE.MeshStandardMaterial({ 
+                color: config.hairColor,
+                roughness: 0.9,
+                metalness: 0.05
+            });
+            
+            const shirtMat = new THREE.MeshStandardMaterial({ 
+                color: config.shirtColor,
+                roughness: 0.7,
+                metalness: 0.2
+            });
+            
+            const pantsMat = new THREE.MeshStandardMaterial({ 
+                color: config.pantsColor,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+            
+            const shoesMat = new THREE.MeshStandardMaterial({ 
+                color: config.shoesColor,
+                roughness: 0.6,
+                metalness: 0.3
+            });
+            
+            // TORSO (diferente para hombre/mujer)
+            let torsoWidth = 1.8, torsoHeight = 2.4, torsoDepth = 1;
+            if (isFemale) {
+                torsoWidth = 1.6;
+                torsoHeight = 2.3;
+            }
+            
+            const torso = new THREE.Mesh(
+                new THREE.BoxGeometry(torsoWidth, torsoHeight, torsoDepth),
+                shirtMat
+            );
+            torso.position.y = 2.5;
+            torso.castShadow = true;
+            group.add(torso);
+            
+            // CABEZA
+            const headGroup = new THREE.Group();
+            headGroup.position.y = 1.2;
+            torso.add(headGroup);
+            
+            const head = new THREE.Mesh(
+                new THREE.BoxGeometry(1.3, 1.3, 1.3),
+                skinMat
+            );
+            head.castShadow = true;
+            headGroup.add(head);
+            
+            // CARA
+            const faceGroup = new THREE.Group();
+            headGroup.add(faceGroup);
+            
+            // OJOS
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+            const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            
+            const eyeL = new THREE.Mesh(eyeGeometry, eyeMat);
+            eyeL.position.set(0.3, 0.1, 0.66);
+            faceGroup.add(eyeL);
+            
+            const eyeR = eyeL.clone();
+            eyeR.position.set(-0.3, 0.1, 0.66);
+            faceGroup.add(eyeR);
+            
+            // BOCA
+            const mouthGeometry = new THREE.BoxGeometry(0.4, 0.05, 0.05);
+            const mouth = new THREE.Mesh(mouthGeometry, eyeMat);
+            mouth.position.set(0, -0.3, 0.66);
+            faceGroup.add(mouth);
+            
+            // CABELLO
+            if (config.hairStyle !== 'bald') {
+                const hairGroup = new THREE.Group();
+                headGroup.add(hairGroup);
+                
+                let hairGeometry;
+                switch(config.hairStyle) {
+                    case 'short':
+                        hairGeometry = new THREE.BoxGeometry(1.5, 0.3, 1.5);
+                        break;
+                    case 'medium':
+                        hairGeometry = new THREE.BoxGeometry(1.5, 0.5, 1.5);
+                        break;
+                    case 'long':
+                        hairGeometry = new THREE.BoxGeometry(1.5, 0.7, 1.5);
+                        break;
+                    case 'anime':
+                        // Cabello estilo anime largo
+                        hairGeometry = new THREE.BoxGeometry(1.5, 0.8, 1.5);
+                        const animeHairBack = new THREE.Mesh(
+                            new THREE.BoxGeometry(1.5, 2.0, 0.5),
+                            hairMat
+                        );
+                        animeHairBack.position.set(0, -0.8, -0.6);
+                        hairGroup.add(animeHairBack);
+                        break;
+                    case 'spiky':
+                        hairGeometry = new THREE.BoxGeometry(1.5, 0.6, 1.5);
+                        // Añadir picos
+                        for (let i = 0; i < 5; i++) {
+                            const spike = new THREE.Mesh(
+                                new THREE.ConeGeometry(0.1, 0.3, 4),
+                                hairMat
+                            );
+                            spike.position.set(
+                                (Math.random() - 0.5) * 1.2,
+                                0.4 + Math.random() * 0.2,
+                                (Math.random() - 0.5) * 1.2
+                            );
+                            hairGroup.add(spike);
+                        }
+                        break;
+                    case 'curly':
+                        hairGeometry = new THREE.BoxGeometry(1.5, 0.6, 1.5);
+                        // Añadir rizos
+                        for (let i = 0; i < 8; i++) {
+                            const curl = new THREE.Mesh(
+                                new THREE.TorusGeometry(0.1, 0.05, 8, 16),
+                                hairMat
+                            );
+                            curl.position.set(
+                                (Math.random() - 0.5) * 1.2,
+                                0.3 + Math.random() * 0.3,
+                                (Math.random() - 0.5) * 1.2
+                            );
+                            hairGroup.add(curl);
+                        }
+                        break;
+                }
+                
+                if (hairGeometry) {
+                    const baseHair = new THREE.Mesh(hairGeometry, hairMat);
+                    baseHair.position.y = 0.5;
+                    hairGroup.add(baseHair);
+                }
+            }
+            
+            // BARBA (solo para hombres)
+            if (!isFemale && config.beardStyle !== 'none') {
+                const beardGroup = new THREE.Group();
+                headGroup.add(beardGroup);
+                
+                let beardGeometry;
+                switch(config.beardStyle) {
+                    case 'short':
+                        beardGeometry = new THREE.BoxGeometry(1.0, 0.3, 0.8);
+                        break;
+                    case 'medium':
+                        beardGeometry = new THREE.BoxGeometry(1.1, 0.5, 0.9);
+                        break;
+                    case 'long':
+                        beardGeometry = new THREE.BoxGeometry(1.2, 0.7, 1.0);
+                        break;
+                    case 'goatee':
+                        beardGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.7);
+                        break;
+                }
+                
+                if (beardGeometry) {
+                    const beard = new THREE.Mesh(beardGeometry, hairMat);
+                    beard.position.set(0, -0.5, 0.66);
+                    beardGroup.add(beard);
+                }
+            }
+            
+            // BRAZOS
+            const armGeometry = new THREE.BoxGeometry(0.7, 2.2, 0.7);
+            const armL = new THREE.Mesh(armGeometry, skinMat);
+            armL.position.set(-(torsoWidth/2 + 0.35), 1.2, 0);
+            armL.castShadow = true;
+            group.add(armL);
+            
+            const armR = armL.clone();
+            armR.position.x = torsoWidth/2 + 0.35;
+            group.add(armR);
+            
+            // PIERNAS
+            const legLength = config.pantsType === 'shorts' ? 1.8 : 2.2;
+            const legGeometry = new THREE.BoxGeometry(0.8, legLength, 0.8);
+            
+            const legL = new THREE.Mesh(legGeometry, pantsMat);
+            legL.position.set(-0.4, 1 - legLength/2, 0);
+            legL.castShadow = true;
+            group.add(legL);
+            
+            const legR = legL.clone();
+            legR.position.x = 0.4;
+            group.add(legR);
+            
+            // PANTALONES CORTOS
+            if (config.pantsType === 'shorts') {
+                const shortsGeometry = new THREE.BoxGeometry(1.6, 0.6, 1.0);
+                const shorts = new THREE.Mesh(shortsGeometry, pantsMat);
+                shorts.position.set(0, 1.9, 0);
+                shorts.castShadow = true;
+                group.add(shorts);
+                
+                // Añadir piernas inferiores
+                const lowerLegGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+                const lowerLegL = new THREE.Mesh(lowerLegGeometry, skinMat);
+                lowerLegL.position.set(-0.4, 0.6, 0);
+                lowerLegL.castShadow = true;
+                group.add(lowerLegL);
+                
+                const lowerLegR = lowerLegL.clone();
+                lowerLegR.position.x = 0.4;
+                group.add(lowerLegR);
+            }
+            
+            // CALZADO
+            let shoeGeometry;
+            switch(config.shoesType) {
+                case 'boots':
+                    shoeGeometry = new THREE.BoxGeometry(0.9, 0.5, 1.2);
+                    break;
+                case 'sneakers':
+                    shoeGeometry = new THREE.BoxGeometry(0.9, 0.3, 1.1);
+                    break;
+                case 'sandals':
+                    shoeGeometry = new THREE.BoxGeometry(0.9, 0.2, 1.1);
+                    break;
+            }
+            
+            if (shoeGeometry) {
+                const shoeL = new THREE.Mesh(shoeGeometry, shoesMat);
+                shoeL.position.set(-0.4, -0.1, 0);
+                shoeL.castShadow = true;
+                group.add(shoeL);
+                
+                const shoeR = shoeL.clone();
+                shoeR.position.x = 0.4;
+                group.add(shoeR);
+            }
+            
+            return group;
+        }
+
+        // ACTUALIZAR PERSONAJE
+        function updateCharacter() {
+            if (character) {
+                scene.remove(character);
+            }
+            
+            character = buildCharacter(characterConfig);
+            scene.add(character);
+            
+            // Actualizar nombre en la interfaz
+            const genderName = characterConfig.gender === 'male' ? 'Hombre' : 'Mujer';
+            document.getElementById('player-gender-name').textContent = genderName;
+        }
+
+        // CONTROL DE PESTAÑAS
+        function switchTab(tabName) {
+            // Ocultar todas las pestañas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Mostrar la pestaña seleccionada
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Activar el botón correspondiente
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach((btn, index) => {
+                if (btn.textContent.toLowerCase().includes(tabName)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Mostrar/ocultar controles según el género
+            const beardControl = document.getElementById('beard-control');
+            if (characterConfig.gender === 'female') {
+                beardControl.style.display = 'none';
+                // Cambiar opciones de cabello para mujer
+                const hairSelect = document.getElementById('hair-style');
+                hairSelect.innerHTML = `
+                    <option value="short">Corto</option>
+                    <option value="medium">Mediano</option>
+                    <option value="long">Largo</option>
+                    <option value="anime">Anime Largo</option>
+                    <option value="curly">Rizado</option>
+                    <option value="bald">Calvo</option>
+                `;
+            } else {
+                beardControl.style.display = 'block';
+                // Cambiar opciones de cabello para hombre
+                const hairSelect = document.getElementById('hair-style');
+                hairSelect.innerHTML = `
+                    <option value="short">Corto</option>
+                    <option value="medium">Mediano</option>
+                    <option value="long">Largo</option>
+                    <option value="spiky">Puntiagudo</option>
+                    <option value="curly">Rizado</option>
+                    <option value="bald">Calvo</option>
+                `;
+            }
+        }
+
+        // CONTROL DEL RATÓN
+        function onMouseDown(event) {
+            isDragging = true;
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+        }
+
+        function onMouseMove(event) {
+            if (!isDragging || !character) return;
+            
+            const deltaMove = {
+                x: event.clientX - previousMousePosition.x,
+                y: event.clientY - previousMousePosition.y
+            };
+            
+            character.rotation.y += deltaMove.x * rotationSpeed;
+            
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+
+        function onMouseWheel(event) {
+            event.preventDefault();
+            zoomLevel += event.deltaY * 0.01;
+            zoomLevel = Math.max(3, Math.min(15, zoomLevel));
+            camera.position.z = zoomLevel;
+        }
+
+        // ANIMACIÓN
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (character && !isInGame) {
+                // Animación sutil de respiración
+                character.position.y = Math.sin(Date.now() * 0.002) * 0.05;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // PERSONAJE ALEATORIO
+        function randomizeCharacter() {
+            const genders = ['male', 'female'];
+            const hairStyles = ['short', 'medium', 'long', 'spiky', 'curly', 'bald'];
+            const beardStyles = ['none', 'short', 'medium', 'long', 'goatee'];
+            const pantsTypes = ['pants', 'shorts'];
+            const shoesTypes = ['boots', 'sneakers', 'sandals'];
+            
+            // Colores aleatorios
+            function randomColor() {
+                return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            }
+            
+            // Generar configuración aleatoria
+            characterConfig.gender = genders[Math.floor(Math.random() * genders.length)];
+            characterConfig.bodyType = ['athletic', 'average', 'heavy', 'slim'][Math.floor(Math.random() * 4)];
+            characterConfig.skinColor = randomColor();
+            characterConfig.hairStyle = hairStyles[Math.floor(Math.random() * hairStyles.length)];
+            characterConfig.hairColor = randomColor();
+            characterConfig.beardStyle = characterConfig.gender === 'male' ? 
+                beardStyles[Math.floor(Math.random() * beardStyles.length)] : 'none';
+            characterConfig.shirtColor = randomColor();
+            characterConfig.pantsType = pantsTypes[Math.floor(Math.random() * pantsTypes.length)];
+            characterConfig.pantsColor = randomColor();
+            characterConfig.shoesType = shoesTypes[Math.floor(Math.random() * shoesTypes.length)];
+            characterConfig.shoesColor = randomColor();
+            
+            // Actualizar controles de la interfaz
+            document.getElementById('gender-select').value = characterConfig.gender;
+            document.getElementById('body-type').value = characterConfig.bodyType;
+            document.getElementById('skin-color').value = characterConfig.skinColor;
+            document.getElementById('hair-style').value = characterConfig.hairStyle;
+            document.getElementById('hair-color').value = characterConfig.hairColor;
+            document.getElementById('beard-style').value = characterConfig.beardStyle;
+            document.getElementById('shirt-color').value = characterConfig.shirtColor;
+            document.getElementById('pants-type').value = characterConfig.pantsType;
+            document.getElementById('pants-color').value = characterConfig.pantsColor;
+            document.getElementById('shoes-type').value = characterConfig.shoesType;
+            document.getElementById('shoes-color').value = characterConfig.shoesColor;
+            
+            // Actualizar pestaña activa
+            switchTab('gender');
+            
+            // Actualizar modelo 3D
+            updateCharacter();
+        }
+
+        // INICIAR JUEGO
+        function startGame() {
+            // Guardar configuración en localStorage
+            localStorage.setItem('robloxCharacter', JSON.stringify(characterConfig));
+            
+            // Ocultar creador
+            const creator = document.getElementById('character-creator');
+            creator.style.opacity = '0';
+            creator.style.transition = 'opacity 1s ease';
+            
+            // Mostrar interfaz del juego
+            setTimeout(() => {
+                creator.style.display = 'none';
+                document.getElementById('game-ui').style.display = 'block';
+                isInGame = true;
+                
+                // Cambiar fondo de la escena
+                scene.background = new THREE.Color(0x87ceeb);
+                
+                // Cambiar cámara para modo juego
+                camera.position.set(0, 8, 15);
+                camera.lookAt(0, 3, 0);
+                
+                // Añadir entorno simple
+                addGameEnvironment();
+                
+                // Aquí se integraría con el juego principal (index.html)
+                console.log('Personaje guardado:', characterConfig);
+                alert('¡Personaje creado! En un juego completo, aquí se cargaría el mundo principal.');
+            }, 1000);
+        }
+
+        // VOLVER AL EDITOR
+        function backToCreator() {
+            // Mostrar creador
+            const creator = document.getElementById('character-creator');
+            creator.style.display = 'flex';
+            creator.style.opacity = '1';
+            
+            // Ocultar interfaz del juego
+            document.getElementById('game-ui').style.display = 'none';
+            isInGame = false;
+            
+            // Restaurar vista previa
+            scene.background = null;
+            camera.position.set(0, 3, zoomLevel);
+            camera.lookAt(0, 0, 0);
+            
+            // Remover entorno del juego
+            removeGameEnvironment();
+        }
+
+        // AÑADIR ENTORNO DE JUEGO
+        function addGameEnvironment() {
+            // Suelo más grande
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x55aa55,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const gameGround = new THREE.Mesh(groundGeometry, groundMaterial);
+            gameGround.rotation.x = -Math.PI / 2;
+            gameGround.position.y = -2.5;
+            gameGround.receiveShadow = true;
+            gameGround.name = 'gameGround';
+            scene.add(gameGround);
+            
+            // Cielo
+            const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+            const skyMaterial = new THREE.MeshBasicMaterial({
+                color: 0x87ceeb,
+                side: THREE.BackSide
+            });
+            const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+            sky.name = 'sky';
+            scene.add(sky);
+            
+            // Algunos árboles simples
+            for (let i = 0; i < 10; i++) {
+                const treeGroup = new THREE.Group();
+                
+                const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 3, 8);
+                const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.y = 1.5;
+                trunk.castShadow = true;
+                treeGroup.add(trunk);
+                
+                const leavesGeometry = new THREE.ConeGeometry(2, 4, 8);
+                const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x2e8b57 });
+                const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.position.y = 4;
+                leaves.castShadow = true;
+                treeGroup.add(leaves);
+                
+                treeGroup.position.set(
+                    (Math.random() - 0.5) * 80,
+                    0,
+                    (Math.random() - 0.5) * 80
+                );
+                treeGroup.name = 'tree';
+                scene.add(treeGroup);
+            }
+        }
+
+        // REMOVER ENTORNO DE JUEGO
+        function removeGameEnvironment() {
+            // Remover objetos del entorno del juego
+            const objectsToRemove = [];
+            scene.traverse(object => {
+                if (object.name === 'gameGround' || object.name === 'sky' || object.name === 'tree') {
+                    objectsToRemove.push(object);
+                }
+            });
+            
+            objectsToRemove.forEach(object => {
+                scene.remove(object);
+            });
+            
+            // Restaurar suelo original
+            const groundGeometry = new THREE.PlaneGeometry(20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222233, 
+                metalness: 0.1, 
+                roughness: 0.8 
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -2.5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+        }
+
+        // INICIALIZAR TODO CUANDO SE CARGA LA PÁGINA
+        window.onload = function() {
+            initPreview();
+            
+            // Cargar personaje guardado si existe
+            const savedCharacter = localStorage.getItem('robloxCharacter');
+            if (savedCharacter) {
+                Object.assign(characterConfig, JSON.parse(savedCharacter));
+                
+                // Actualizar controles
+                document.getElementById('gender-select').value = characterConfig.gender;
+                document.getElementById('body-type').value = characterConfig.bodyType;
+                document.getElementById('skin-color').value = characterConfig.skinColor;
+                document.getElementById('hair-style').value = characterConfig.hairStyle;
+                document.getElementById('hair-color').value = characterConfig.hairColor;
+                document.getElementById('beard-style').value = characterConfig.beardStyle;
+                document.getElementById('shirt-color').value = characterConfig.shirtColor;
+                document.getElementById('pants-type').value = characterConfig.pantsType;
+                document.getElementById('pants-color').value = characterConfig.pantsColor;
+                document.getElementById('shoes-type').value = characterConfig.shoesType;
+                document.getElementById('shoes-color').value = characterConfig.shoesColor;
+                
+                updateCharacter();
+            }
+            
+            // EVENTOS DE LOS CONTROLES
+            document.getElementById('gender-select').addEventListener('change', function() {
+                characterConfig.gender = this.value;
+                switchTab('gender');
+                updateCharacter();
+            });
+            
+            document.getElementById('body-type').addEventListener('change', function() {
+                characterConfig.bodyType = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('skin-color').addEventListener('input', function() {
+                characterConfig.skinColor = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('hair-style').addEventListener('change', function() {
+                characterConfig.hairStyle = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('hair-color').addEventListener('input', function() {
+                characterConfig.hairColor = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('beard-style').addEventListener('change', function() {
+                characterConfig.beardStyle = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('shirt-color').addEventListener('input', function() {
+                characterConfig.shirtColor = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('pants-type').addEventListener('change', function() {
+                characterConfig.pantsType = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('pants-color').addEventListener('input', function() {
+                characterConfig.pantsColor = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('shoes-type').addEventListener('change', function() {
+                characterConfig.shoesType = this.value;
+                updateCharacter();
+            });
+            
+            document.getElementById('shoes-color').addEventListener('input', function() {
+                characterConfig.shoesColor = this.value;
+                updateCharacter();
+            });
+            
+            // BOTONES
+            document.getElementById('btn-random').addEventListener('click', randomizeCharacter);
+            document.getElementById('btn-start').addEventListener('click', startGame);
+            document.getElementById('btn-back-to-creator').addEventListener('click', backToCreator);
+            
+            // REDIMENSIONAR VENTANA
+            window.addEventListener('resize', function() {
+                const canvas = document.getElementById('preview-canvas');
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
+        };
+    </script>
+</body>
+</html>
